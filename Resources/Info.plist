@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>Driftdock</string>
+    <key>CFBundleDisplayName</key>
+    <string>Driftdock</string>
+    <key>CFBundleIdentifier</key>
+    <string>xyz.sequinn.driftdock</string>
+    <key>CFBundleExecutable</key>
+    <string>Driftdock</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
+    <key>LSUIElement</key>
+    <true/>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSLocationUsageDescription</key>
+    <string>Driftdock shows the weather where you are.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Driftdock shows the weather where you are.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>The notch mirror shows your camera so you can check how you look before a call.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>The notch shows your next calendar events.</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>The notch shows your next calendar events.</string>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>Driftdock shows the battery level of your AirPods and other Bluetooth devices.</string>
+    <key>NSAudioCaptureUsageDescription</key>
+    <string>Driftdock routes an app's sound through its volume mixer so you can set that app's volume.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Voice Transcribe listens while you dictate into the notch.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Voice Transcribe turns what you say into text in the notch.</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Glide connects to your other computer on this network to share your mouse and keyboard.</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_glide._tcp</string>
+    </array>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Driftdock reads what's playing in Music or Spotify, controls playback, and can switch dark mode.</string>
+</dict>
+</plist>
