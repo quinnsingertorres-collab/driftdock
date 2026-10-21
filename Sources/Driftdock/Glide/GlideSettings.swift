@@ -29,6 +29,14 @@ struct GlideSettings: View {
                             GlideController.shared.restart()
                         }
                         .controlSize(.small)
+                        Button("Disconnect") { GlideController.shared.disconnect() }
+                            .controlSize(.small)
+                    } else {
+                        Button("Connect") {
+                            refreshPermissions()
+                            GlideController.shared.connect()
+                        }
+                        .controlSize(.small)
                     }
                 }
             } header: {
@@ -100,6 +108,7 @@ struct GlideSettings: View {
             }
 
             Section("Options") {
+                Toggle("⌃⌥⌘K connects and disconnects", isOn: $state.config.glideHotkey)
                 Toggle("Show a note in the notch when the other computer connects or drops", isOn: $state.config.glideFlashes)
             }
 

@@ -88,7 +88,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(withTitle: "Clipboard History (⇧⌘V)", action: #selector(openClipboard), keyEquivalent: "").target = self
         menu.addItem(withTitle: "File Tray", action: #selector(openTray), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Volume Mixer", action: #selector(openMixer), keyEquivalent: "").target = self
-        menu.addItem(withTitle: "Glide (Mouse Sharing) On / Off", action: #selector(toggleGlide), keyEquivalent: "").target = self
+        let glideItem = NSMenuItem(title: "Glide", action: nil, keyEquivalent: "")
+        glideItem.image = NSImage(systemSymbolName: "cursorarrow.motionlines", accessibilityDescription: nil)
+        glideItem.submenu = GlideMenu.shared.menu
+        menu.addItem(glideItem)
         menu.addItem(.separator())
         menu.addItem(withTitle: "Restart Driftdock", action: #selector(restart), keyEquivalent: "r").target = self
         menu.addItem(.separator())
@@ -120,11 +123,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func openClipboard() { ClipboardPickerController.shared.toggle() }
     @objc func openTray() { FileTrayController.shared.show() }
     @objc func openMixer() { MixerPanelController.shared.toggle() }
-    @objc func toggleGlide() {
-        AppState.shared.config.glideEnabled.toggle()
-        LiveActivityCenter.shared.flash(symbol: "cursorarrow.motionlines",
-                                        text: AppState.shared.config.glideEnabled ? "Glide on" : "Glide off")
-    }
 
     @objc func restart() {
         AppRestarter.restart()

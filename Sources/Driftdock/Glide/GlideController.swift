@@ -81,6 +81,13 @@ final class GlideController: ObservableObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] in self?.sharer?.speed = $0 }
             .store(in: &cancellables)
+
+        state.$config
+            .map(\.glideHotkey)
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] in self?.applyHotkey($0) }
+            .store(in: &cancellables)
     }
 
     /// Starts over with the current settings (the Settings "Reconnect" button).
@@ -93,6 +100,39 @@ final class GlideController: ObservableObject {
     /// Pulls the cursor back to this Mac if it's on the other computer.
     func bringHome() {
         sharer?.leave(notify: true)
+    }
+
+    var isOn: Bool { AppState.shared.config.glideEnabled }
+    var isRemote: Bool { if case .remote = status { return true } else { return false } }
+
+    /// Turns Glide on, or starts the link over if it's already on.
+    func connect() {
+        if isOn { restart() } else { AppState.shared.config.glideEnabled = true }
+    }
+
+    /// Drops the other computer and stops listening / dialing until you connect again.
+    func disconnect() {
+        bringHome()
+        AppState.shared.config.glideEnabled = false
+    }
+
+    /// For the menu and the ⌃⌥⌘K hotkey.
+    func toggle() {
+        let wasOn = isOn
+        if wasOn { disconnect() } else { connect() }
+        LiveActivityCenter.shared.flash(symbol: wasOn ? "cable.connector.slash" : "cable.connector",
+                                        text: wasOn ? "Glide disconnected" : "Glide connecting…")
+    }
+
+    private func applyHotkey(_ on: Bool) {
+        if on {
+            // ⌃⌥⌘K — keyCode 40 is K; Carbon flags: cmd 0x0100, option 0x0800, control 0x1000.
+            HotKeyCenter.shared.register(id: 700, keyCode: 40, modifiers: 0x0100 | 0x0800 | 0x1000) { [weak self] in
+                self?.toggle()
+            }
+        } else {
+            HotKeyCenter.shared.unregister(id: 700)
+        }
     }
 
     func refreshAddresses() {
@@ -372,6 +412,12 @@ final class GlideSharer {
             if type == .keyDown, code == 0x05,
                event.flags.contains([.maskControl, .maskAlternate, .maskCommand]) {
                 leave(notify: true)
+                return nil
+            }
+            // ⌃⌥⌘K disconnects even while the pointer is over there.
+            if type == .keyDown, code == 0x28, AppState.shared.config.glideHotkey,
+               event.flags.contains([.maskControl, .maskAlternate, .maskCommand]) {
+                DispatchQueue.main.async { GlideController.shared.toggle() }
                 return nil
             }
             if let hid = GlideKeys.macToHid[code] {
