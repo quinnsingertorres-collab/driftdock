@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import SwiftUI
 import Combine
 import Network
 import CoreGraphics
@@ -57,7 +58,11 @@ final class GlideController: ObservableObject {
         }
     }
 
-    @Published private(set) var status: Status = .off
+    @Published private(set) var status: Status = .off {
+        didSet { if status != oldValue { announce(from: oldValue, to: status) } }
+    }
+    /// Who we were linked to, so "disconnected" can say from what.
+    private var lastPeer: String?
     @Published private(set) var addresses: [String] = GlideWire.localIPv4()
 
     private var receiver: GlideReceiver?
@@ -120,8 +125,10 @@ final class GlideController: ObservableObject {
     func toggle() {
         let wasOn = isOn
         if wasOn { disconnect() } else { connect() }
-        LiveActivityCenter.shared.flash(symbol: wasOn ? "cable.connector.slash" : "cable.connector",
-                                        text: wasOn ? "Glide disconnected" : "Glide connecting…")
+        // Disconnecting shows its own banner (from the status change); connecting gets a quick note.
+        if !wasOn {
+            LiveActivityCenter.shared.flash(symbol: "cable.connector", text: "Glide connecting…")
+        }
     }
 
     private func applyHotkey(_ on: Bool) {
@@ -182,20 +189,48 @@ final class GlideController: ObservableObject {
     }
 
     private func update(_ new: Status) {
-        let old = status
-        status = new
-        guard setup?.flashes == true, old != new else { return }
-        switch (old, new) {
-        case (.connected, .remote(let peer)):
+        status = new   // announce(from:to:) runs from didSet
+    }
+
+    private static func isLinked(_ s: Status) -> Bool {
+        switch s {
+        case .connected, .remote: return true
+        default: return false
+        }
+    }
+
+    /// Connected / disconnected cards by the notch, plus a quick note when the pointer crosses over.
+    private func announce(from old: Status, to new: Status) {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in self?.announce(from: old, to: new) }
+            return
+        }
+        guard AppState.shared.config.glideFlashes else { return }
+        let wasLinked = Self.isLinked(old), isLinked = Self.isLinked(new)
+
+        if case .connected(let peer) = new { lastPeer = peer }
+        if case .remote(let peer) = new { lastPeer = peer }
+
+        if !wasLinked && isLinked {
+            let peer = lastPeer ?? "your other computer"
+            LiveActivityCenter.shared.showBanner(.init(
+                symbol: "cable.connector", tint: .green, title: "Glide connected",
+                subtitle: "Sharing your mouse and keyboard with the \(peer)", trailing: "checkmark"), seconds: 3.5)
+        } else if wasLinked && !isLinked {
+            let peer = lastPeer ?? "other computer"
+            let detail: String
+            switch new {
+            case .off: detail = "Turned off. Press ⌃⌥⌘K to connect again"
+            case .waiting, .connecting: detail = "Lost the \(peer). Reconnecting…"
+            case .failed(let why): detail = why
+            case .needsPermission(let what): detail = "Needs \(what) permission"
+            default: detail = "The \(peer) went away"
+            }
+            LiveActivityCenter.shared.showBanner(.init(
+                symbol: "cable.connector.slash", tint: .red, title: "Glide disconnected",
+                subtitle: detail, trailing: nil), seconds: 4)
+        } else if case .connected = old, case .remote(let peer) = new {
             LiveActivityCenter.shared.flash(symbol: "cursorarrow.motionlines", text: "On the \(peer)", seconds: 1.2)
-        case (.remote, .connected):
-            break   // coming home is obvious; no banner
-        case (_, .connected(let peer)):
-            LiveActivityCenter.shared.flash(symbol: "cable.connector", text: "Glide: \(peer) connected")
-        case (.connected, .waiting), (.connected, .connecting), (.remote, .connecting):
-            LiveActivityCenter.shared.flash(symbol: "cable.connector.slash", text: "Glide disconnected")
-        default:
-            break
         }
     }
 
