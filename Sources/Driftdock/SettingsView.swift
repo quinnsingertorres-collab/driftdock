@@ -515,6 +515,10 @@ struct NotchSettings: View {
                 Toggle("When nothing is playing, open to Today instead of the player", isOn: $state.config.notchTodayWhenIdle)
                 NotchTabsEditor()
             }
+
+            Section("Tools tab") {
+                NotchToolsEditor()
+            }
             .disabled(!state.config.notchEnabled)
 
             Section("Live activities (while closed)") {
@@ -558,19 +562,17 @@ struct ExtrasSettings: View {
     var body: some View {
         Form {
             Section("Launcher") {
-                Toggle("⌥Space opens the launcher", isOn: $state.config.launcherHotkey)
-                Text("Search apps, run commands (Stay Awake, pick a color, dark mode…), do quick math like (24+18)*3, or search the web. Return copies a math result.")
+                Text("Open it from the menu bar or the notch's Tools tab. Search apps, run commands (Stay Awake, pick a color, dark mode…), do quick math like (24+18)*3, or search the web. Return copies a math result.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             Section("Voice Transcribe") {
-                Toggle("⌥⇧D starts and stops live dictation in the notch", isOn: $state.config.dictationHotkey)
-                Text("Your words stream into the notch as you speak; when you stop, the transcript is copied. Runs on this Mac when your Mac supports it. Asks for Microphone and Speech Recognition the first time.")
+                Text("Start and stop it with Dictate in the notch's Tools tab. Your words stream into the notch as you speak; when you stop, the transcript is copied. Runs on this Mac when your Mac supports it. Asks for Microphone and Speech Recognition the first time.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             Section("Clipboard") {
-                Toggle("⇧⌘V opens the Clipboard Manager (text and images, pin, rename, copy text from images, drag out)", isOn: $state.config.clipboardHotkey)
+                Toggle("Keep clipboard history (open it from the menu bar or the notch's Tools tab)", isOn: $state.config.clipboardHotkey)
                 Toggle("Paste right away after choosing", isOn: $state.config.clipboardAutoPaste)
                     .onChange(of: state.config.clipboardAutoPaste) { _, on in
                         if on && !Paster.isTrusted { Paster.requestAccess() }
@@ -586,7 +588,6 @@ struct ExtrasSettings: View {
                 }
             }
             Section("Window snapping") {
-                Toggle("Keyboard shortcuts (⌃⌥ + arrows and more)", isOn: $state.config.snapHotkeys)
                 Toggle("Drag a window to a screen edge or corner to snap it", isOn: $state.config.snapDrag)
                 LabeledSlider(title: "Gap between windows", value: $state.config.snapGap, range: 0...24, format: "%.0f pt")
                 Toggle("Leave room for Driftdock when it isn't auto-hiding", isOn: $state.config.snapAvoidDock)
@@ -599,12 +600,6 @@ struct ExtrasSettings: View {
                         Button("Open Settings") { Paster.openSettings() }.controlSize(.small)
                         Button("Check again") { trusted = Paster.isTrusted }.controlSize(.small)
                     }
-                }
-                DisclosureGroup("Shortcuts") {
-                    ForEach(SnapTarget.allCases, id: \.self) { t in
-                        LabeledContent(t.title, value: ExtrasController.snapKeyNames[t] ?? "")
-                    }
-                    LabeledContent("Undo last snap", value: "⌃⌥⌫")
                 }
             }
 
@@ -777,6 +772,54 @@ struct NotchTabsEditor: View {
                 Button("Reset") { state.config.notchTabs = [] }
             }
             Text("Drag rows to reorder. In the notch you can also drag tabs onto each other, right-click a tab, or use the + at the end of the tab bar.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+/// Reorder, add and remove the buttons in the notch's Tools tab.
+struct NotchToolsEditor: View {
+    @EnvironmentObject var state: AppState
+
+    var body: some View {
+        let tools = NotchTool.current(state.config)
+        let missing = NotchTool.allCases.filter { !tools.contains($0) }
+        VStack(alignment: .leading, spacing: 6) {
+            List {
+                ForEach(tools) { t in
+                    HStack(spacing: 10) {
+                        Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary)
+                        Image(systemName: t.symbol).frame(width: 20).foregroundStyle(state.accent)
+                        Text(t.title)
+                        Spacer()
+                        Button { NotchTool.remove(t) } label: {
+                            Image(systemName: "minus.circle.fill").foregroundStyle(.red)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Remove this tool")
+                    }
+                }
+                .onMove { from, to in
+                    var t = tools
+                    t.move(fromOffsets: from, toOffset: to)
+                    NotchTool.set(t)
+                }
+            }
+            .frame(height: CGFloat(max(tools.count, 1)) * 28 + 12)
+            .listStyle(.inset(alternatesRowBackgrounds: true))
+            HStack {
+                Menu("Add Tool") {
+                    ForEach(missing) { t in
+                        Button { NotchTool.add(t) } label: { Label(t.title, systemImage: t.symbol) }
+                    }
+                }
+                .disabled(missing.isEmpty)
+                .fixedSize()
+                Spacer()
+                Button("Reset") { state.config.notchToolOrder = [] }
+            }
+            Text("Drag rows to reorder. In the notch you can also drag tools onto each other, right-click one, or use the Customize tile.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

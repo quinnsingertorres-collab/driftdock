@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-/// ⇧⌘V clipboard history picker. Choosing an item copies it, and pastes it too
+/// Clipboard history picker. Choosing an item copies it, and pastes it too
 /// when "Paste after choosing" is on and Accessibility access is granted.
 final class ClipboardPickerController {
     static let shared = ClipboardPickerController()

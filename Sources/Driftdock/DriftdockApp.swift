@@ -84,8 +84,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.addItem(withTitle: "Show / Hide Dock", action: #selector(toggleDock), keyEquivalent: "d").target = self
         menu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",").target = self
-        menu.addItem(withTitle: "Launcher (⌥Space)", action: #selector(openLauncher), keyEquivalent: "").target = self
-        menu.addItem(withTitle: "Clipboard History (⇧⌘V)", action: #selector(openClipboard), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "Launcher", action: #selector(openLauncher), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "Clipboard History", action: #selector(openClipboard), keyEquivalent: "").target = self
         menu.addItem(withTitle: "File Tray", action: #selector(openTray), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Volume Mixer", action: #selector(openMixer), keyEquivalent: "").target = self
         let glideItem = NSMenuItem(title: "Glide", action: nil, keyEquivalent: "")

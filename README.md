@@ -69,11 +69,11 @@ Everything is configurable in Settings → Notch, including a fake notch for Mac
 
 - **File Tray:** shake a file while dragging it and a tray appears under the pointer. Drop to hold, drag out later. It shares files with the notch shelf.
 - **Actions** on the shelf/tray (all on-device): convert images (PNG/JPEG/HEIC/TIFF), compress images, remove background, copy text (OCR), compress video, make GIF, combine into PDF, zip, share. Click items to pick which ones an action uses; results are saved next to the originals.
-- **Launcher (⌥Space):** apps, commands, quick math, web search.
-- **Clipboard Manager (⇧⌘V):** text and images, pin to the top, rename, copy text out of images, drag entries into other apps; optionally pastes for you (needs Accessibility).
-- **Voice Transcribe (⌥⇧D):** live dictation that streams into the notch as you speak; stopping copies the transcript.
+- **Launcher** (menu bar or notch Tools): apps, commands, quick math, web search.
+- **Clipboard Manager** (menu bar or notch Tools): text and images, pin to the top, rename, copy text out of images, drag entries into other apps; optionally pastes for you (needs Accessibility).
+- **Voice Transcribe** (Dictate in notch Tools): live dictation that streams into the notch as you speak; stopping copies the transcript.
 
-- **Window snapping:** ⌃⌥←/→/↑/↓ for halves, ⌃⌥↩ maximize, ⌃⌥C center, ⌃⌥U/I/J/K quarters, ⌃⌥D/F/G thirds, ⌃⌥E/T two-thirds, ⌃⌥⌫ undo. Or drag a window to a screen edge/corner and a preview shows where it lands. Needs Accessibility.
+- **Window snapping:** drag a window to a screen edge/corner and a preview shows where it lands. Needs Accessibility.
 - **AirPods & device battery:** left, right and case for AirPods (one level for keyboards, mice, headphones) in the dock, the notch, and a quick note when something connects.
 - **Mixer (macOS 14.2+), like eqMac:** menu bar → Volume Mixer, or the notch's mixer tab. System volume and **Boost** (up to 2×), **Balance**, an **App Mixer** with a 0–200% fader per app, a **10-band EQ** (32 Hz–16 kHz, ±12 dB) with presets, saved custom presets, preamp and auto-preamp, and an **output device** picker. Nothing is processed while everything is at its default; changing something asks for System Audio Recording permission.
 

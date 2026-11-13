@@ -257,7 +257,7 @@ final class StayAwake: ObservableObject {
 
 // MARK: - Wiring
 
-/// Keeps shortcuts, the shake-to-tray detector and the monitors in sync with Settings.
+/// Keeps the shake-to-tray detector and the monitors in sync with Settings.
 final class ExtrasController {
     private let state: AppState
     private var cancellable: AnyCancellable?
@@ -275,67 +275,21 @@ final class ExtrasController {
             .sink { [weak self] _ in DispatchQueue.main.async { self?.apply() } }
     }
 
-    /// Key codes for ⌃⌥ snapping shortcuts.
-    static let snapKeys: [(Int, SnapTarget)] = [
-        (123, .leftHalf), (124, .rightHalf), (126, .topHalf), (125, .bottomHalf),
-        (36, .maximize), (8, .center),
-        (32, .topLeft), (34, .topRight), (38, .bottomLeft), (40, .bottomRight),
-        (2, .leftThird), (3, .centerThird), (5, .rightThird), (14, .leftTwoThirds), (17, .rightTwoThirds),
-    ]
-
-    static let snapKeyNames: [SnapTarget: String] = [
-        .leftHalf: "⌃⌥←", .rightHalf: "⌃⌥→", .topHalf: "⌃⌥↑", .bottomHalf: "⌃⌥↓",
-        .maximize: "⌃⌥↩", .center: "⌃⌥C",
-        .topLeft: "⌃⌥U", .topRight: "⌃⌥I", .bottomLeft: "⌃⌥J", .bottomRight: "⌃⌥K",
-        .leftThird: "⌃⌥D", .centerThird: "⌃⌥F", .rightThird: "⌃⌥G", .leftTwoThirds: "⌃⌥E", .rightTwoThirds: "⌃⌥T",
-    ]
-
     private func apply() {
         let cfg = state.config
         let hk = HotKeyCenter.shared
-        if cfg.launcherHotkey {
-            hk.register(id: HotKeyID.launcher.rawValue, keyCode: 49 /* space */, modifiers: 0x0800 /* option */) {
-                LauncherController.shared.toggle()
-            }
-        } else {
-            hk.unregister(id: HotKeyID.launcher.rawValue)
+        // Driftdock doesn't take global shortcuts any more (they clashed with other apps).
+        // Release any an older build may still hold.
+        for id in [HotKeyID.launcher.rawValue, HotKeyID.clipboard.rawValue, 199, 300] + (100...114).map({ UInt32($0) }) {
+            hk.unregister(id: id)
         }
-        if cfg.clipboardHotkey {
-            _ = ClipboardModel.shared // start recording history even if the dock widget is off
-            hk.register(id: HotKeyID.clipboard.rawValue, keyCode: 9 /* V */, modifiers: 0x0100 | 0x0200 /* cmd+shift */) {
-                ClipboardPickerController.shared.toggle()
-            }
-        } else {
-            hk.unregister(id: HotKeyID.clipboard.rawValue)
-        }
+        if cfg.clipboardHotkey { _ = ClipboardModel.shared } // keep recording clipboard history
         FileTrayController.shared.setShakeEnabled(cfg.shakeForTray)
-        if cfg.dictationHotkey {
-            hk.register(id: 300, keyCode: 2 /* D */, modifiers: 0x0800 | 0x0200 /* option+shift */) {
-                VoiceTranscriber.shared.toggle()
-            }
-        } else {
-            hk.unregister(id: 300)
-        }
         cfg.devicesBattery ? DevicesModel.shared.start() : DevicesModel.shared.stop()
         cfg.notchLiveCalls && cfg.notchEnabled ? CallMonitor.shared.start() : CallMonitor.shared.stop()
         MixerModel.shared.start()   // idles cheaply; only processes audio when a setting needs it
         DragSnapper.shared.setEnabled(cfg.snapDrag)
 
-        // Window snapping: ⌃⌥ + key, like Rectangle.
-        let ctrlOpt = 0x1000 | 0x0800
-        for (i, (key, target)) in Self.snapKeys.enumerated() {
-            let id = UInt32(100 + i)
-            if cfg.snapHotkeys {
-                hk.register(id: id, keyCode: key, modifiers: ctrlOpt) { WindowSnapper.shared.snapFocused(target) }
-            } else {
-                hk.unregister(id: id)
-            }
-        }
-        if cfg.snapHotkeys {
-            hk.register(id: 199, keyCode: 51 /* delete */, modifiers: ctrlOpt) { WindowSnapper.shared.restoreFocused() }
-        } else {
-            hk.unregister(id: 199)
-        }
         if cfg.notchVolumeHUD || cfg.replaceSystemHUD { VolumeMonitor.shared.start() }
         // Only take over the keys when the notch is there to show the change.
         MediaKeyInterceptor.shared.setEnabled(cfg.replaceSystemHUD && cfg.notchEnabled)

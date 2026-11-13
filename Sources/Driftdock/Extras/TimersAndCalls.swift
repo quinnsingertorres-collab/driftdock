@@ -324,7 +324,7 @@ struct NotchTimers: View {
                     }
             }
             if timers.items.isEmpty {
-                Text("No timers running. Start one here, or type \"timer 10m\" in the launcher (⌥Space).")
+                Text("No timers running. Start one here, or type \"timer 10m\" in the launcher.")
                     .font(.system(size: 11))
                     .foregroundStyle(.white.opacity(0.5))
             } else {

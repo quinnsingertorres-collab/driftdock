@@ -1216,42 +1216,242 @@ struct ShelfItem: View {
 
 // MARK: - Tools
 
+/// Buttons in the notch's Tools tab. Their order (and which ones show) is customizable.
+enum NotchTool: String, CaseIterable, Identifiable {
+    case stayAwake, focus, glide, pickColor, launcher, clipboard, screenshot, darkMode, fileTray, stopwatch, dictate, mixer, timer5
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .stayAwake: return "Stay Awake"
+        case .focus: return "Focus"
+        case .glide: return "Glide"
+        case .pickColor: return "Pick Color"
+        case .launcher: return "Launcher"
+        case .clipboard: return "Clipboard"
+        case .screenshot: return "Screenshot"
+        case .darkMode: return "Dark Mode"
+        case .fileTray: return "File Tray"
+        case .stopwatch: return "Stopwatch"
+        case .dictate: return "Dictate"
+        case .mixer: return "Mixer"
+        case .timer5: return "5 min Timer"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .stayAwake: return "cup.and.saucer.fill"
+        case .focus: return "timer"
+        case .glide: return "cursorarrow.motionlines"
+        case .pickColor: return "eyedropper"
+        case .launcher: return "bolt.fill"
+        case .clipboard: return "doc.on.clipboard"
+        case .screenshot: return "camera.viewfinder"
+        case .darkMode: return "circle.lefthalf.filled"
+        case .fileTray: return "tray.full.fill"
+        case .stopwatch: return "stopwatch"
+        case .dictate: return "waveform"
+        case .mixer: return "slider.vertical.3"
+        case .timer5: return "hourglass"
+        }
+    }
+
+    static let defaultOrder: [NotchTool] = [.stayAwake, .focus, .glide, .pickColor, .launcher, .clipboard,
+                                            .screenshot, .darkMode, .fileTray, .stopwatch, .dictate]
+
+    /// The person's tools, in their order.
+    static func current(_ cfg: Config) -> [NotchTool] {
+        cfg.notchToolOrder.isEmpty ? defaultOrder : cfg.notchToolOrder.compactMap(NotchTool.init(rawValue:))
+    }
+
+    static func set(_ tools: [NotchTool]) {
+        var seen = Set<NotchTool>()
+        AppState.shared.config.notchToolOrder = tools.filter { seen.insert($0).inserted }.map(\.rawValue)
+    }
+
+    static func add(_ t: NotchTool) {
+        let cur = current(AppState.shared.config)
+        if !cur.contains(t) { set(cur + [t]) }
+    }
+
+    static func remove(_ t: NotchTool) {
+        set(current(AppState.shared.config).filter { $0 != t })
+    }
+
+    static func move(_ t: NotchTool, to target: NotchTool) {
+        var cur = current(AppState.shared.config)
+        guard t != target, let from = cur.firstIndex(of: t), let to = cur.firstIndex(of: target) else { return }
+        cur.remove(at: from)
+        cur.insert(t, at: to)
+        set(cur)
+    }
+
+    static func shift(_ t: NotchTool, by delta: Int) {
+        var cur = current(AppState.shared.config)
+        guard let i = cur.firstIndex(of: t) else { return }
+        let j = max(0, min(cur.count - 1, i + delta))
+        guard i != j else { return }
+        cur.remove(at: i)
+        cur.insert(t, at: j)
+        set(cur)
+    }
+}
+
 struct NotchTools: View {
     @EnvironmentObject var state: AppState
     @ObservedObject var awake = StayAwake.shared
     @ObservedObject var focus = PomodoroModel.shared
+    @ObservedObject var glide = GlideController.shared
+    @ObservedObject var voice = VoiceTranscriber.shared
+    @State private var editing = false
 
     var body: some View {
-        let mins = Int(focus.remaining) / 60
-        let secs = Int(focus.remaining) % 60
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
-            tool(awake.isOn ? "Awake" : "Stay Awake", "cup.and.saucer.fill", on: awake.isOn) { awake.toggle() }
-            tool(focus.running ? String(format: "%02d:%02d", mins, secs) : "Focus", "timer", on: focus.running) { focus.toggle() }
-            tool("Pick Color", "eyedropper") { ScreenColorPicker.pick() }
-            tool("Launcher", "bolt.fill") { LauncherController.shared.toggle() }
-            tool("Clipboard", "doc.on.clipboard") { ClipboardPickerController.shared.toggle() }
-            tool("Screenshot", "camera.viewfinder") {
-                NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: "/System/Applications/Utilities/Screenshot.app"),
-                                                   configuration: NSWorkspace.OpenConfiguration())
+        let tools = NotchTool.current(state.config)
+        let missing = NotchTool.allCases.filter { !tools.contains($0) }
+        ScrollView(showsIndicators: false) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
+                ForEach(tools) { t in
+                    tile(t)
+                        .overlay(alignment: .topLeading) {
+                            if editing {
+                                Button {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { NotchTool.remove(t) }
+                                } label: {
+                                    Image(systemName: "minus.circle.fill")
+                                        .font(.system(size: 13))
+                                        .foregroundStyle(.white, .red)
+                                }
+                                .buttonStyle(.plain)
+                                .offset(x: -4, y: -4)
+                            }
+                        }
+                        .draggable(t.rawValue) {
+                            Image(systemName: t.symbol).padding(8).background(Circle().fill(Color.black)).foregroundStyle(.white)
+                        }
+                        .dropDestination(for: String.self) { items, _ in
+                            guard let raw = items.first, let moved = NotchTool(rawValue: raw) else { return false }
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { NotchTool.move(moved, to: t) }
+                            return true
+                        }
+                        .contextMenu {
+                            Button("Move Left") { withAnimation { NotchTool.shift(t, by: -1) } }
+                            Button("Move Right") { withAnimation { NotchTool.shift(t, by: 1) } }
+                            Divider()
+                            Button("Remove \(t.title)") { withAnimation { NotchTool.remove(t) } }
+                            addMenu(missing)
+                            Button(editing ? "Done Editing" : "Edit Tools") { editing.toggle() }
+                        }
+                }
+                // Last tile: add more tools / finish editing.
+                Menu {
+                    addMenuItems(missing)
+                    Divider()
+                    Button(editing ? "Done Editing" : "Edit Tools…") { editing.toggle() }
+                    Button("Reset to Default") { state.config.notchToolOrder = [] }
+                } label: {
+                    VStack(spacing: 5) {
+                        Image(systemName: editing ? "checkmark" : "plus").font(.system(size: 14, weight: .semibold))
+                        Text(editing ? "Done" : "Customize").font(.system(size: 10, weight: .medium))
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 42)
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.18), style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .contentShape(Rectangle())
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
             }
-            tool("Dark Mode", "circle.lefthalf.filled") {
-                NowPlayingModel.run("tell application \"System Events\" to tell appearance preferences to set dark mode to not dark mode")
-            }
-            tool("File Tray", "tray.full.fill") { FileTrayController.shared.show() }
-            tool("Stopwatch", "stopwatch") { TimerCenter.shared.addStopwatch() }
-            tool("Dictate", "waveform", on: VoiceTranscriber.shared.isRunning) { VoiceTranscriber.shared.toggle() }
+            .padding(.top, 4)
         }
     }
 
-    private func tool(_ title: String, _ symbol: String, on: Bool = false, action: @escaping () -> Void) -> some View {
+    private func addMenu(_ missing: [NotchTool]) -> some View {
+        Menu("Add Tool") { addMenuItems(missing) }
+    }
+
+    @ViewBuilder
+    private func addMenuItems(_ missing: [NotchTool]) -> some View {
+        if missing.isEmpty { Text("Every tool is showing") }
+        ForEach(missing) { t in
+            Button { withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { NotchTool.add(t) } } label: {
+                Label(t.title, systemImage: t.symbol)
+            }
+        }
+    }
+
+    // MARK: Tiles
+
+    @ViewBuilder
+    private func tile(_ t: NotchTool) -> some View {
+        switch t {
+        case .stayAwake:
+            button(awake.isOn ? "Awake" : t.title, t.symbol, on: awake.isOn) { awake.toggle() }
+        case .focus:
+            let mins = Int(focus.remaining) / 60, secs = Int(focus.remaining) % 60
+            button(focus.running ? String(format: "%02d:%02d", mins, secs) : t.title, t.symbol, on: focus.running) { focus.toggle() }
+        case .glide:
+            button(glideLabel, glide.isOn ? "cable.connector" : "cable.connector.slash", on: glide.isOn,
+                   tint: glideTint) { glide.toggle() }
+                .help("Glide: \(glide.status.text). Click to turn \(glide.isOn ? "off" : "on") (⌃⌥⌘K)")
+        case .pickColor:
+            button(t.title, t.symbol) { ScreenColorPicker.pick() }
+        case .launcher:
+            button(t.title, t.symbol) { LauncherController.shared.toggle() }
+        case .clipboard:
+            button(t.title, t.symbol) { ClipboardPickerController.shared.toggle() }
+        case .screenshot:
+            button(t.title, t.symbol) {
+                NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: "/System/Applications/Utilities/Screenshot.app"),
+                                                   configuration: NSWorkspace.OpenConfiguration())
+            }
+        case .darkMode:
+            button(t.title, t.symbol) {
+                NowPlayingModel.run("tell application \"System Events\" to tell appearance preferences to set dark mode to not dark mode")
+            }
+        case .fileTray:
+            button(t.title, t.symbol) { FileTrayController.shared.show() }
+        case .stopwatch:
+            button(t.title, t.symbol) { TimerCenter.shared.addStopwatch() }
+        case .dictate:
+            button(t.title, t.symbol, on: voice.isRunning) { voice.toggle() }
+        case .mixer:
+            button(t.title, t.symbol) { MixerPanelController.shared.toggle() }
+        case .timer5:
+            button(t.title, t.symbol) { TimerCenter.shared.addTimer(300) }
+        }
+    }
+
+    private var glideLabel: String {
+        guard glide.isOn else { return "Glide Off" }
+        switch glide.status {
+        case .connected, .remote: return "Glide On"
+        case .waiting, .connecting: return "Connecting…"
+        default: return "Glide"
+        }
+    }
+
+    private var glideTint: Color? {
+        guard glide.isOn else { return nil }
+        switch glide.status {
+        case .connected, .remote: return .green
+        case .waiting, .connecting: return .orange
+        case .failed, .needsPermission: return .red
+        default: return nil
+        }
+    }
+
+    private func button(_ title: String, _ symbol: String, on: Bool = false, tint: Color? = nil,
+                        action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 5) {
                 Image(systemName: symbol).font(.system(size: 14, weight: .semibold))
-                Text(title).font(.system(size: 10, weight: .medium)).lineLimit(1).monospacedDigit()
+                Text(title).font(.system(size: 10, weight: .medium)).lineLimit(1).minimumScaleFactor(0.8).monospacedDigit()
             }
             .frame(maxWidth: .infinity, minHeight: 42)
             .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(on ? state.accent.opacity(0.55) : Color.white.opacity(0.08)))
+                .fill(on ? (tint ?? state.accent).opacity(0.55) : Color.white.opacity(0.08)))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

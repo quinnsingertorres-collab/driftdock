@@ -190,6 +190,7 @@ struct Config: Codable {
     var glideSpeed: Double = 1.0
     var glideFlashes = true
     var glideHotkey = true
+    var notchToolOrder: [String] = []
 
     static var defaultPinned: [PinnedItem] {
         [
@@ -218,6 +219,7 @@ struct Config: Codable {
         case notchClickInBrowsers, notchEnabled, notchFakeOnOtherMacs, notchOpenOnHover, notchHoverDelay, notchLiveMusic, notchLiveBattery, notchOpenOnDrag, notchCalendar, notchShelf, notchMirror, notchHaptics
         case screenshotMinutes, includeRecordings, revealOnScreenshot, cityName, latitude, longitude, fahrenheit, searchEngine
         case glideEnabled, glideRole, glideHost, glideEdge, glideSpeed, glideFlashes, glideHotkey
+        case notchToolOrder
     }
 
     // Tolerant decoding: missing or new keys fall back to defaults instead of wiping settings.
@@ -321,6 +323,7 @@ struct Config: Codable {
         glideSpeed = c.value(.glideSpeed, d.glideSpeed)
         glideFlashes = c.value(.glideFlashes, d.glideFlashes)
         glideHotkey = c.value(.glideHotkey, d.glideHotkey)
+        notchToolOrder = c.value(.notchToolOrder, d.notchToolOrder)
     }
 }
 
